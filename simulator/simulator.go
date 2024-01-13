@@ -7,9 +7,9 @@ import (
     "math/rand"
 )
 
-const minInteractionDistance = 10
-
 const maxVelocity = 2
+const repulsionDistance = 10.0
+const influenceDistance = 100.0
 
 type Vec2 struct {
     X, Y int
@@ -26,6 +26,7 @@ type Simulator struct {
     particles []Particle
     tick uint64
     bounds vec2.Vector
+    regionToParticleIndex [][]int
 }
 
 var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
@@ -35,7 +36,7 @@ var influenceMatrix = [][]float64{
     []float64{0.10, 0.10, 0.5, 0.10, 0.10},
     []float64{0.10, 0.10, 0.10, 0.10, 0.10},
     []float64{0.10, 0.10, 0.10, 0.5, 0.10},
-    []float64{0.10, 0.10, 0.10, 0.4, 0.10},
+    []float64{0-1, -.1, -.1, 0.4, 0.10},
 }
 
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
@@ -65,6 +66,7 @@ func (sim *Simulator) UpdateSize(X float64, Y float64) {
         Y: Y,
     }
 }
+
 func (sim *Simulator) Step() {
 
     // Compute velocity
@@ -123,8 +125,6 @@ func (sim *Simulator) computeForce(source Particle, influence Particle) vec2.Vec
     distance := vec2.Magnitude(diff)
     direction := vec2.Scale(diff, 1/distance)
 
-    repulsionDistance := 10.0
-    influenceDistance := 100.0
     if distance < repulsionDistance {
         factor -= 0.25*(distance - repulsionDistance)
     } else if distance < influenceDistance {
