@@ -44,11 +44,12 @@ func main() {
 			size := win.Bounds().Size()
 			sim.UpdateSize(size.X, size.Y)
 
+			// Sleep to ensure we are updating grapgics at a consistent rate
+			time.Sleep(start.Add(time.Second * 1/updatesPerSecond).Sub(time.Now()))
+
 			win.Clear(colornames.Black)
 			imd.Draw(win)
 			win.Update()
-
-			time.Sleep(start.Add(time.Second * 1/updatesPerSecond).Sub(time.Now()))
 		}
 	})
 
