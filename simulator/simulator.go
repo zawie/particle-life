@@ -31,13 +31,7 @@ type Simulator struct {
 
 var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
 
-var influenceMatrix = [][]float64{
-    []float64{0.10, -0.10, 0.10, -0.20, 0.10},
-    []float64{0.10, 0.10, 0.5, 0.10, 0.10},
-    []float64{0.10, 0.10, 0.10, 0.10, 0.10},
-    []float64{0.10, 0.10, 0.10, 0.5, 0.10},
-    []float64{0-1, -.1, -.1, 0.4, 0.10},
-}
+var influenceMatrix [5][5]float64
 
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
@@ -55,6 +49,17 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
             p.Position.Y = rand.Float64() * sim.bounds.Y
             sim.particles = append(sim.particles, p)
         } 
+    }
+
+    for i, _ := range particleTypes {
+        for j, _ := range particleTypes {
+            if i == j {
+                influenceMatrix[i][j] = .1
+            } else {
+                v := (2.0*rand.Float64() - 1.0)
+                influenceMatrix[i][j] = v*v*v
+            }
+        }
     }
 
     return &sim
