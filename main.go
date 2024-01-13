@@ -6,7 +6,10 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
 	"zawie/life/simulator"
+	"time"
 )
+
+const updatesPerSecond = 60
 
 func main() {
 
@@ -27,6 +30,7 @@ func main() {
 		}
 		
 		for !win.Closed() {
+			start := time.Now()
 			sim.Step()
 
 			imd := imdraw.New(nil)
@@ -39,6 +43,8 @@ func main() {
 			win.Clear(colornames.Black)
 			imd.Draw(win)
 			win.Update()
+
+			time.Sleep(start.Add(time.Second * 1/updatesPerSecond).Sub(time.Now()))
 		}
 	})
 
