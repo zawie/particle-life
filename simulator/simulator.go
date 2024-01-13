@@ -5,6 +5,7 @@ import (
     "golang.org/x/image/colornames"
     "image/color"
     "math/rand"
+    "sync"
 )
 
 const maxVelocity = 2
@@ -75,42 +76,54 @@ func (sim *Simulator) UpdateSize(X float64, Y float64) {
 func (sim *Simulator) Step() {
 
     // Compute velocity
-    for i := range sim.particles {
-        var force vec2.Vector
-        for _, neighbor := range sim.getNearParticles(sim.particles[i]) {
-            if neighbor == sim.particles[i] {
-                continue
+    var wg0 sync.WaitGroup
+    var wg1 sync.WaitGroup
+    wg0.Add(len(sim.particles))
+    wg1.Add(len(sim.particles))
+
+    for idx := range sim.particles {
+        go func(i int) {
+            defer wg1.Done()
+
+            var force vec2.Vector
+            for _, neighbor := range sim.getNearParticles(sim.particles[i]) {
+                if neighbor == sim.particles[i] {
+                    continue
+                }
+                force = vec2.Add(force, sim.computeForce(sim.particles[i], neighbor))
             }
-            force = vec2.Add(force, sim.computeForce(sim.particles[i], neighbor))
-        }
-        sim.particles[i].Velocity.X += force.X
-        sim.particles[i].Velocity.Y += force.Y
+            sim.particles[i].Velocity.X += force.X
+            sim.particles[i].Velocity.Y += force.Y
 
-        if vec2.Magnitude(sim.particles[i].Velocity) > maxVelocity {
-            sim.particles[i].Velocity = vec2.Scale(vec2.Unit(sim.particles[i].Velocity), maxVelocity)
-        }
+            if vec2.Magnitude(sim.particles[i].Velocity) > maxVelocity {
+                sim.particles[i].Velocity = vec2.Scale(vec2.Unit(sim.particles[i].Velocity), maxVelocity)
+            }      
+            
+            wg0.Done()
+            wg0.Wait() 
+
+            // Modify position 
+            sim.particles[i].Position.X += sim.particles[i].Velocity.X
+            sim.particles[i].Position.Y += sim.particles[i].Velocity.Y
+
+            // Wrap
+            for sim.particles[i].Position.X  > sim.bounds.X {
+                sim.particles[i].Position.X -= sim.bounds.X
+            }
+            for sim.particles[i].Position.X < 0 {
+                sim.particles[i].Position.X += sim.bounds.X
+            }
+
+            for sim.particles[i].Position.Y  > sim.bounds.Y {
+                sim.particles[i].Position.Y -= sim.bounds.Y
+            }
+            for sim.particles[i].Position.Y < 0 {
+                sim.particles[i].Position.Y += sim.bounds.Y
+            }
+        }(idx)
     }
 
-    // Modify position 
-    for i := range sim.GetAllParticles() {
-        sim.particles[i].Position.X += sim.particles[i].Velocity.X
-        sim.particles[i].Position.Y += sim.particles[i].Velocity.Y
-
-        // Wrap
-        for sim.particles[i].Position.X  > sim.bounds.X {
-            sim.particles[i].Position.X -= sim.bounds.X
-        }
-        for sim.particles[i].Position.X < 0 {
-            sim.particles[i].Position.X += sim.bounds.X
-        }
-
-        for sim.particles[i].Position.Y  > sim.bounds.Y {
-            sim.particles[i].Position.Y -= sim.bounds.Y
-        }
-        for sim.particles[i].Position.Y < 0 {
-            sim.particles[i].Position.Y += sim.bounds.Y
-        }
-    }
+    wg1.Wait()
 
     sim.tick++
 }
