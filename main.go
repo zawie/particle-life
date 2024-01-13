@@ -16,21 +16,20 @@ func main() {
 	const X = 2000
 	const Y = 1000
 
-	sim := simulator.NewSimulator(X, Y, 100)
+	sim := simulator.NewSimulator(X, Y, 300)
 
 	pixelgl.Run(func() {
 		cfg := pixelgl.WindowConfig{
 			Title:  "Zawie's Particle Life",
 			Bounds: pixel.R(0, 0, X, Y),
 			VSync:  true,
+			Maximized: true,
+			Resizable: true,
 		}
 		win, err := pixelgl.NewWindow(cfg)
 		if err != nil {
 			panic(err)
 		}
-		win.SetMonitor(pixelgl.PrimaryMonitor())
-
-		
 		for !win.Closed() {
 			start := time.Now()
 			sim.Step()
