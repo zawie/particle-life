@@ -28,6 +28,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		win.SetMonitor(pixelgl.PrimaryMonitor())
+
 		
 		for !win.Closed() {
 			start := time.Now()
@@ -39,6 +41,9 @@ func main() {
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				imd.Circle(1, 1)
 			}
+
+			size := win.Bounds().Size()
+			sim.UpdateSize(size.X, size.Y)
 
 			win.Clear(colornames.Black)
 			imd.Draw(win)

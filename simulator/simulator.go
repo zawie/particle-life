@@ -9,7 +9,7 @@ import (
 
 const minInteractionDistance = 10
 
-const maxVelocity = 1
+const maxVelocity = 2
 
 type Vec2 struct {
     X, Y int
@@ -59,6 +59,12 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
     return &sim
 }
 
+func (sim *Simulator) UpdateSize(X float64, Y float64) {
+    sim.bounds = vec2.Vector {
+        X: X,
+        Y: Y,
+    }
+}
 func (sim *Simulator) Step() {
 
     // Compute velocity
