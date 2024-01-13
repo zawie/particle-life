@@ -35,7 +35,7 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         Y: Y,
     }
 
-    particleTypes := []color.Color{colornames.Pink, colornames.Limegreen, colornames.Yellow}
+    particleTypes := []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
     for _,t := range particleTypes {
         for i := 0; i < particleCount; i++ {
             var p Particle
