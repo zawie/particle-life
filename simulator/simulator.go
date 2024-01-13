@@ -17,6 +17,7 @@ type Vec2 struct {
 
 type Particle struct {
     Position vec2.Vector
+    id  int
 	Velocity vec2.Vector
     Color color.Color
 }
@@ -27,6 +28,16 @@ type Simulator struct {
     bounds vec2.Vector
 }
 
+var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
+
+var influenceMatrix = [][]float64{
+    []float64{0.10, -0.10, 0.10, -0.20, 0.10},
+    []float64{0.10, 0.10, 0.5, 0.10, 0.10},
+    []float64{0.10, 0.10, 0.10, 0.10, 0.10},
+    []float64{0.10, 0.10, 0.10, 0.5, 0.10},
+    []float64{0.10, 0.10, 0.10, 0.4, 0.10},
+}
+
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator
@@ -34,12 +45,11 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         X: X,
         Y: Y,
     }
-
-    particleTypes := []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
-    for _,t := range particleTypes {
+    for id,color := range particleTypes {
         for i := 0; i < particleCount; i++ {
             var p Particle
-            p.Color = t
+            p.Color = color
+            p.id = id
             p.Position.X = rand.Float64() * sim.bounds.X
             p.Position.Y = rand.Float64() * sim.bounds.Y
             sim.particles = append(sim.particles, p)
@@ -112,8 +122,12 @@ func (sim *Simulator) computeForce(source Particle, influence Particle) vec2.Vec
     if distance < repulsionDistance {
         factor -= 0.25*(distance - repulsionDistance)
     } else if distance < influenceDistance {
-        factor += 0.1/(distance - influenceDistance)
+        factor += getInfluenceFactor(source.id, influence.id)/(distance - influenceDistance)
     }
 
     return vec2.Scale(direction, factor)
+}
+
+func getInfluenceFactor(a int, b int) float64 {
+    return influenceMatrix[a][b]
 }
