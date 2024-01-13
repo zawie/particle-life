@@ -2,20 +2,14 @@ package simulator
 
 import (
     "zawie/life/simulator/vec2"
+    "golang.org/x/image/colornames"
+    "image/color"
     "math/rand"
 )
 
 const minInteractionDistance = 10
 
 const maxVelocity = 1
-
-type ParticleType int
-
-const (
-    Red ParticleType = iota
-    Blue
-    Green
-)
 
 type Vec2 struct {
     X, Y int
@@ -24,7 +18,7 @@ type Vec2 struct {
 type Particle struct {
     Position vec2.Vector
 	Velocity vec2.Vector
-    Type ParticleType
+    Color color.Color
 }
 
 type Simulator struct {
@@ -41,11 +35,15 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         Y: Y,
     }
 
-    for i := 0; i < particleCount; i++ {
-        var p Particle
-        p.Position.X = rand.Float64() * sim.bounds.X
-        p.Position.Y = rand.Float64() * sim.bounds.Y
-        sim.particles = append(sim.particles, p)
+    particleTypes := []color.Color{colornames.Pink, colornames.Limegreen, colornames.Yellow}
+    for _,t := range particleTypes {
+        for i := 0; i < particleCount; i++ {
+            var p Particle
+            p.Color = t
+            p.Position.X = rand.Float64() * sim.bounds.X
+            p.Position.Y = rand.Float64() * sim.bounds.Y
+            sim.particles = append(sim.particles, p)
+        } 
     }
 
     return &sim

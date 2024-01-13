@@ -31,7 +31,7 @@ func main() {
 
 			imd := imdraw.New(nil)
 			for _, particle := range sim.GetAllParticles() {
-				imd.Color = colornames.Limegreen
+				imd.Color = particle.Color
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				imd.Circle(1, 1)
 			}
