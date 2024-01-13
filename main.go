@@ -20,7 +20,7 @@ func main() {
 
 	pixelgl.Run(func() {
 		cfg := pixelgl.WindowConfig{
-			Title:  "Pixel Rocks!",
+			Title:  "Zawie's Particle Life",
 			Bounds: pixel.R(0, 0, X, Y),
 			VSync:  true,
 		}
@@ -39,7 +39,7 @@ func main() {
 			for _, particle := range sim.GetAllParticles() {
 				imd.Color = particle.Color
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-				imd.Circle(1, 1)
+				imd.Circle(1, 0)
 			}
 
 			size := win.Bounds().Size()
