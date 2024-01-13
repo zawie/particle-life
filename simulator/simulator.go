@@ -7,6 +7,8 @@ import (
 
 const minInteractionDistance = 10
 
+const maxVelocity = 1
+
 type ParticleType int
 
 const (
@@ -62,6 +64,10 @@ func (sim *Simulator) Step() {
         }
         sim.particles[i].Velocity.X += force.X
         sim.particles[i].Velocity.Y += force.Y
+
+        if vec2.Magnitude(sim.particles[i].Velocity) > maxVelocity {
+            sim.particles[i].Velocity = vec2.Scale(vec2.Unit(sim.particles[i].Velocity), maxVelocity)
+        }
     }
 
     // Modify position 
@@ -69,6 +75,7 @@ func (sim *Simulator) Step() {
         sim.particles[i].Position.X += sim.particles[i].Velocity.X
         sim.particles[i].Position.Y += sim.particles[i].Velocity.Y
 
+        // Wrap
         for sim.particles[i].Position.X  > sim.bounds.X {
             sim.particles[i].Position.X -= sim.bounds.X
         }
@@ -96,12 +103,19 @@ func (sim *Simulator) getNearParticles(particle Particle) []Particle {
 }
 
 func (sim *Simulator) computeForce(source Particle, influence Particle) vec2.Vector {
+    var factor float64
+
     diff := vec2.Subtract(source.Position, influence.Position)
     distance := vec2.Magnitude(diff)
-    if distance == 0 {
-        distance = 0.0001
-    }
     direction := vec2.Scale(diff, 1/distance)
 
-    return  vec2.Scale(direction, 0.0001)
+    repulsionDistance := 10.0
+    influenceDistance := 100.0
+    if distance < repulsionDistance {
+        factor -= 0.25*(distance - repulsionDistance)
+    } else if distance < influenceDistance {
+        factor += 0.1/(distance - influenceDistance)
+    }
+
+    return vec2.Scale(direction, factor)
 }

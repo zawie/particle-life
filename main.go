@@ -13,7 +13,7 @@ func main() {
 	const X = 2000
 	const Y = 1000
 
-	sim := simulator.NewSimulator(X, Y, 10)
+	sim := simulator.NewSimulator(X, Y, 100)
 
 	pixelgl.Run(func() {
 		cfg := pixelgl.WindowConfig{
