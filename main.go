@@ -5,7 +5,6 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
-	// "image/color"
 	"zawie/life/simulator"
 	"time"
 	"fmt"
@@ -21,7 +20,7 @@ func main() {
 	fmt.Println("Creating simulator...")
 	sim := simulator.NewSimulator(X, Y, 5000)
 
-	drawGrid := false 
+	debugMode := false 
 
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
@@ -45,18 +44,32 @@ func main() {
 			sim.Step()
 
 			imd := imdraw.New(nil)
-			for _, particle := range sim.GetAllParticles() {
+			particles := sim.GetAllParticles()
+			for _, particle := range particles {
 				imd.Color = particle.Color
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				imd.Circle(1, 0)
+
+				if debugMode && particle.Id == 0 {
+					imd.Color = colornames.White
+					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
+					imd.Circle(5, 1)
+
+					for _, neighbor := range sim.GetNearParticles(particle.Position) {
+						imd.Color = colornames.Limegreen
+						imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
+						imd.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
+						imd.Line(1)
+					}
+				}
 			}
 
 			if win.JustPressed(pixelgl.KeyG) {
-				drawGrid = !drawGrid
+				debugMode = !debugMode
 			}
 			
 			grid := imdraw.New(nil)
-			if drawGrid {
+			if debugMode {
 				grid.Color = colornames.Gray
 				for x := 0.0; x <= size.X; x += 100.0 {
 					for y := 0.0; y <= size.Y; y += 100.0 {
@@ -72,7 +85,7 @@ func main() {
 
 			win.Clear(colornames.Black)
 			imd.Draw(win)
-			if drawGrid {
+			if debugMode {
 				grid.Draw(win)
 			}
 			win.Update()

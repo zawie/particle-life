@@ -20,9 +20,10 @@ type Vec2 struct {
 
 type Particle struct {
     Position vec2.Vector
-    id  int
+    Id  int
 	Velocity vec2.Vector
     Color color.Color
+    typeId int
 }
 
 type Simulator struct {
@@ -43,8 +44,9 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
     particlesAdded := 0 
     for particlesAdded< particleCount {
         var p Particle
-        p.id = rand.Int() % len(particleTypes)
-        p.Color = particleTypes[p.id]
+        p.Id = particlesAdded
+        p.typeId = rand.Int() % len(particleTypes)
+        p.Color = particleTypes[p.typeId]
         p.Position.X = rand.Float64() * sim.bounds.X
         p.Position.Y = rand.Float64() * sim.bounds.Y
         p.Velocity.X = rand.Float64() - 0.5
@@ -138,7 +140,7 @@ func (sim *Simulator) Step() {
 
                 particles := sim.chunks[i][j]
 
-                neighbors := sim.getNearParticles(vec2.Vector{X: float64(i*chunkSize + chunkSize/2), Y: float64(j*chunkSize + chunkSize/2)})
+                neighbors := sim.GetNearParticles(vec2.Vector{X: float64(i*chunkSize + chunkSize/2), Y: float64(j*chunkSize + chunkSize/2)})
 
                 for particle, _ := range particles {
                
@@ -188,7 +190,7 @@ func (sim *Simulator) GetAllParticles() (particles []*Particle) {
     return
 }
 
-func (sim *Simulator) getNearParticles(position vec2.Vector) (near []*Particle) {
+func (sim *Simulator) GetNearParticles(position vec2.Vector) (near []*Particle) {
     
     i := int(position.X/chunkSize)
     j := int(position.Y/chunkSize)
@@ -219,7 +221,7 @@ func (sim *Simulator) computeForce(source *Particle, influence *Particle) vec2.V
     if distance < repulsionDistance {
         factor -= 0.25*(distance - repulsionDistance)
     } else if distance < influenceDistance {
-        factor += getInfluenceFactor(source.id, influence.id)/(distance - influenceDistance)
+        factor += getInfluenceFactor(source.typeId, influence.typeId)/(distance - influenceDistance)
     }
 
     return vec2.Scale(direction, factor)
