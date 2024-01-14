@@ -129,16 +129,17 @@ func (sim *Simulator) Step() {
     wg0.Add(threadCount)
     wg1.Add(threadCount)
 
-    for _, row := range sim.chunks {
-        for _, chunk := range row {
-            go func(particles map[*Particle]struct{}) {
+    for I, row := range sim.chunks {
+        for J, _ := range row {
+            go func(i int, j int) {
                 defer wg1.Done()
 
-                var neighbors []*Particle
+                particles := sim.chunks[i][j]
+
+                neighbors := sim.getNearParticles(vec2.Vector{X: float64(i*chunkSize + chunkSize/2), Y: float64(j*chunkSize + chunkSize/2)})
+
                 for particle, _ := range particles {
-                    if neighbors == nil {
-                        neighbors = sim.getNearParticles(particle.Position)
-                    }
+               
                     var force vec2.Vector
                     for _, neighbor := range neighbors {
                         if neighbor == particle {
@@ -163,7 +164,7 @@ func (sim *Simulator) Step() {
                     particle.Position.Y += particle.Velocity.Y
                     // Note: position is wrapped in UpdateChunks() call
                 }
-            }(chunk)
+            }(I, J)
         }
     }
 
