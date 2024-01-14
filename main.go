@@ -7,6 +7,7 @@ import (
 	"golang.org/x/image/colornames"
 	"zawie/life/simulator"
 	"time"
+	"fmt"
 )
 
 const updatesPerSecond = 60
@@ -16,8 +17,10 @@ func main() {
 	const X = 2000
 	const Y = 1000
 
-	sim := simulator.NewSimulator(X, Y, 300)
+	fmt.Println("Creating simulator...")
+	sim := simulator.NewSimulator(X, Y, 1000)
 
+	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
 		cfg := pixelgl.WindowConfig{
 			Title:  "Zawie's Particle Life",
@@ -30,6 +33,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		fmt.Println("Starting main loop...")
 		for !win.Closed() {
 			start := time.Now()
 			sim.Step()
@@ -51,6 +56,8 @@ func main() {
 			imd.Draw(win)
 			win.Update()
 		}
+
+		fmt.Println("Window closed. Terminating gracefully.")
 	})
 
 }

@@ -6,11 +6,13 @@ import (
     "image/color"
     "math/rand"
     "sync"
+    "fmt"
 )
 
 const maxVelocity = 2
 const repulsionDistance = 10.0
 const influenceDistance = 100.0
+const chunkSize = 100
 
 type Vec2 struct {
     X, Y int
@@ -24,10 +26,9 @@ type Particle struct {
 }
 
 type Simulator struct {
-    particles []Particle
     tick uint64
     bounds vec2.Vector
-    regionToParticleIndex [][]int
+    chunks [][]map[*Particle]struct{}
 }
 
 var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
@@ -37,19 +38,19 @@ var influenceMatrix [5][5]float64
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator
-    sim.bounds = vec2.Vector {
-        X: X,
-        Y: Y,
-    }
-    for id,color := range particleTypes {
-        for i := 0; i < particleCount; i++ {
-            var p Particle
-            p.Color = color
-            p.id = id
-            p.Position.X = rand.Float64() * sim.bounds.X
-            p.Position.Y = rand.Float64() * sim.bounds.Y
-            sim.particles = append(sim.particles, p)
-        } 
+    (&sim).UpdateSize(X,Y)
+
+    particlesAdded := 0 
+    for particlesAdded< particleCount {
+        var p Particle
+        p.id = rand.Int() % len(particleTypes)
+        p.Color = particleTypes[p.id]
+        p.Position.X = rand.Float64() * sim.bounds.X
+        p.Position.Y = rand.Float64() * sim.bounds.Y
+        p.Velocity.X = rand.Float64() - 0.5
+        p.Velocity.Y = rand.Float64() - 0.5
+        sim.AddParticle(&p)
+        particlesAdded++
     }
 
     for i, _ := range particleTypes {
@@ -67,10 +68,55 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 }
 
 func (sim *Simulator) UpdateSize(X float64, Y float64) {
+    grew := X > sim.bounds.X || Y > sim.bounds.Y 
+    shrunk := X < sim.bounds.X || Y < sim.bounds.Y 
+
     sim.bounds = vec2.Vector {
         X: X,
         Y: Y,
     }
+
+    if grew {
+        fmt.Println("Grew!")
+        I := int((X + (chunkSize-1))/chunkSize)
+        J := int((Y + (chunkSize-1))/chunkSize)
+        for i := len(sim.chunks); i < I; i++ {
+            sim.chunks = append(sim.chunks, []map[*Particle]struct{}{})
+        }
+        for i := 0; i < len(sim.chunks); i++ {
+            for j := len(sim.chunks[i]); j < J; j++ {
+                sim.chunks[i] = append(sim.chunks[i], make(map[*Particle]struct{}))
+            }
+        }  
+    }
+
+    if shrunk {
+        fmt.Println("Shrunk!")
+    }
+
+    sim.UpdateChunks()
+}
+
+func (sim *Simulator) UpdateChunks() {
+    for i, row := range sim.chunks {
+        for j, chunk := range row {
+            for ptr,_ := range chunk {
+                sim.wrapPosition(ptr)
+                x := int(ptr.Position.X/chunkSize)
+                y := int(ptr.Position.Y/chunkSize)
+                if x != i || y != j {
+                    sim.chunks[x][y][ptr] = struct{}{}
+                    delete(chunk, ptr)
+                }
+            }
+        }
+    }
+}
+
+func (sim *Simulator) AddParticle(particle *Particle) {
+    x := int(particle.Position.X/chunkSize)
+    y := int(particle.Position.Y/chunkSize)
+    sim.chunks[x][y][particle] = struct{}{}
 }
 
 func (sim *Simulator) Step() {
@@ -78,65 +124,88 @@ func (sim *Simulator) Step() {
     // Compute velocity
     var wg0 sync.WaitGroup
     var wg1 sync.WaitGroup
-    wg0.Add(len(sim.particles))
-    wg1.Add(len(sim.particles))
 
-    for idx := range sim.particles {
-        go func(i int) {
-            defer wg1.Done()
+    threadCount := len(sim.chunks) * len(sim.chunks[0])
+    wg0.Add(threadCount)
+    wg1.Add(threadCount)
 
-            var force vec2.Vector
-            for _, neighbor := range sim.getNearParticles(sim.particles[i]) {
-                if neighbor == sim.particles[i] {
-                    continue
+    for _, row := range sim.chunks {
+        for _, chunk := range row {
+            go func(particles map[*Particle]struct{}) {
+                defer wg1.Done()
+
+                for particle, _ := range particles {
+                    var force vec2.Vector
+                    for _, neighbor := range sim.getNearParticles(particle.Position) {
+                        if neighbor == particle {
+                            continue
+                        }
+                        force = vec2.Add(force, sim.computeForce(particle, neighbor))
+                    }
+                    particle.Velocity.X += force.X
+                    particle.Velocity.Y += force.Y
+
+                    if vec2.Magnitude(particle.Velocity) > maxVelocity {
+                        particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), maxVelocity)
+                    }      
                 }
-                force = vec2.Add(force, sim.computeForce(sim.particles[i], neighbor))
-            }
-            sim.particles[i].Velocity.X += force.X
-            sim.particles[i].Velocity.Y += force.Y
 
-            if vec2.Magnitude(sim.particles[i].Velocity) > maxVelocity {
-                sim.particles[i].Velocity = vec2.Scale(vec2.Unit(sim.particles[i].Velocity), maxVelocity)
-            }      
-            
-            wg0.Done()
-            wg0.Wait() 
+                wg0.Done()
+                wg0.Wait() 
 
-            // Modify position 
-            sim.particles[i].Position.X += sim.particles[i].Velocity.X
-            sim.particles[i].Position.Y += sim.particles[i].Velocity.Y
+                for particle, _ := range particles {
 
-            // Wrap
-            for sim.particles[i].Position.X  > sim.bounds.X {
-                sim.particles[i].Position.X -= sim.bounds.X
-            }
-            for sim.particles[i].Position.X < 0 {
-                sim.particles[i].Position.X += sim.bounds.X
-            }
+                    // Modify position 
+                    particle.Position.X += particle.Velocity.X
+                    particle.Position.Y += particle.Velocity.Y
 
-            for sim.particles[i].Position.Y  > sim.bounds.Y {
-                sim.particles[i].Position.Y -= sim.bounds.Y
-            }
-            for sim.particles[i].Position.Y < 0 {
-                sim.particles[i].Position.Y += sim.bounds.Y
-            }
-        }(idx)
+                    // Wrap
+                    sim.wrapPosition(particle)
+                }
+            }(chunk)
+        }
     }
 
     wg1.Wait()
+    sim.UpdateChunks()
 
     sim.tick++
 }
 
-func (sim *Simulator) GetAllParticles() []Particle {
-    return sim.particles
+func (sim *Simulator) GetAllParticles() (particles []*Particle) {
+    for _, row := range sim.chunks {
+        for _, chunk := range row {
+            for particle, _ := range chunk {
+                particles = append(particles, particle)
+            }
+        }
+    }
+
+    return
 }
 
-func (sim *Simulator) getNearParticles(particle Particle) []Particle {
-    return sim.particles
+func (sim *Simulator) getNearParticles(position vec2.Vector) (near []*Particle) {
+    
+    i := int(position.X/chunkSize)
+    j := int(position.Y/chunkSize)
+
+    for l := range []int{-1,0,1} {
+        for k := range []int{-1,0,1} {
+            a := i + l
+            b := j + k
+            if (a < 0 || b < 0 || a >= len(sim.chunks) || b >= len(sim.chunks[0])) {
+                continue
+            }
+            for ptr,_ := range sim.chunks[a][b] {
+                near = append(near, ptr)
+            }
+        }
+    }
+
+    return
 }
 
-func (sim *Simulator) computeForce(source Particle, influence Particle) vec2.Vector {
+func (sim *Simulator) computeForce(source *Particle, influence *Particle) vec2.Vector {
     var factor float64
 
     diff := vec2.Subtract(source.Position, influence.Position)
@@ -150,6 +219,22 @@ func (sim *Simulator) computeForce(source Particle, influence Particle) vec2.Vec
     }
 
     return vec2.Scale(direction, factor)
+}
+
+func (sim *Simulator) wrapPosition(particle *Particle) {
+    for particle.Position.X  > sim.bounds.X {
+        particle.Position.X -= sim.bounds.X
+    }
+    for particle.Position.X < 0 {
+        particle.Position.X += sim.bounds.X
+    }
+
+    for particle.Position.Y  > sim.bounds.Y {
+        particle.Position.Y -= sim.bounds.Y
+    }
+    for particle.Position.Y < 0 {
+        particle.Position.Y += sim.bounds.Y
+    }
 }
 
 func getInfluenceFactor(a int, b int) float64 {
