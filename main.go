@@ -5,12 +5,14 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
+	"golang.org/x/image/font/basicfont"
+	"github.com/faiface/pixel/text"
 	"zawie/life/simulator"
 	"time"
 	"fmt"
 )
 
-const updatesPerSecond = 60
+const framesPerSecond = 60
 
 func main() {
 
@@ -18,12 +20,16 @@ func main() {
 	const Y = 1000
 
 	fmt.Println("Creating simulator...")
-	sim := simulator.NewSimulator(X, Y, 5000)
-
-	debugMode := false 
+	sim := simulator.NewSimulator(X, Y, 1000)
 
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
+
+
+		speed := 1
+		oldSpeed := speed
+		debugMode := false 
+
 		cfg := pixelgl.WindowConfig{
 			Title:  "Zawie's Particle Life",
 			Bounds: pixel.R(0, 0, X, Y),
@@ -35,13 +41,16 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		atlas := text.NewAtlas(basicfont.Face7x13, text.ASCII)
 
 		fmt.Println("Starting main loop...")
 		for !win.Closed() {
 			start := time.Now()
 			size := win.Bounds().Size()
 			sim.UpdateSize(size.X, size.Y)
-			sim.Step()
+			for i := 0; i < speed; i++ { 
+				sim.Step()
+			}
 
 			imd := imdraw.New(nil)
 			particles := sim.GetAllParticles()
@@ -64,8 +73,29 @@ func main() {
 				}
 			}
 
+			// Text controls
 			if win.JustPressed(pixelgl.KeyG) {
 				debugMode = !debugMode
+			}
+
+			// Speed controls
+			if win.JustPressed(pixelgl.KeyL) {
+				speed++
+			}
+
+			if win.JustPressed(pixelgl.KeyJ) {
+				if speed > 0 {
+					speed--
+				}
+			}
+
+			if win.JustPressed(pixelgl.KeyK) {
+				if speed > 0 {
+					oldSpeed = speed
+					speed = 0
+				} else {
+					 speed = oldSpeed
+				}
 			}
 			
 			grid := imdraw.New(nil)
@@ -81,13 +111,24 @@ func main() {
 			}
 
 			// Sleep to ensure we are updating grapgics at a consistent rate
-			time.Sleep(start.Add(time.Second * 1/updatesPerSecond).Sub(time.Now()))
+			time.Sleep(start.Add(time.Second * 1/framesPerSecond).Sub(time.Now()))
 
 			win.Clear(colornames.Black)
 			imd.Draw(win)
 			if debugMode {
 				grid.Draw(win)
 			}
+
+			topLeftTxt := text.New(pixel.V(30, size.Y-30), atlas)
+			topLeftTxt.Color = colornames.White
+			if speed == 0 {
+				topLeftTxt.WriteString("PAUSED")
+			} else {
+				topLeftTxt.WriteString(fmt.Sprintf("SPEED x%d", 1 << (speed-1)))
+			}
+
+			topLeftTxt.Draw(win, pixel.IM)
+
 			win.Update()
 		}
 
