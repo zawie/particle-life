@@ -5,6 +5,7 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
+	// "image/color"
 	"zawie/life/simulator"
 	"time"
 	"fmt"
@@ -18,7 +19,9 @@ func main() {
 	const Y = 1000
 
 	fmt.Println("Creating simulator...")
-	sim := simulator.NewSimulator(X, Y, 1000)
+	sim := simulator.NewSimulator(X, Y, 5000)
+
+	drawGrid := false 
 
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
@@ -37,6 +40,8 @@ func main() {
 		fmt.Println("Starting main loop...")
 		for !win.Closed() {
 			start := time.Now()
+			size := win.Bounds().Size()
+			sim.UpdateSize(size.X, size.Y)
 			sim.Step()
 
 			imd := imdraw.New(nil)
@@ -46,14 +51,30 @@ func main() {
 				imd.Circle(1, 0)
 			}
 
-			size := win.Bounds().Size()
-			sim.UpdateSize(size.X, size.Y)
+			if win.JustPressed(pixelgl.KeyG) {
+				drawGrid = !drawGrid
+			}
+			
+			grid := imdraw.New(nil)
+			if drawGrid {
+				grid.Color = colornames.Gray
+				for x := 0.0; x <= size.X; x += 100.0 {
+					for y := 0.0; y <= size.Y; y += 100.0 {
+						grid.Push(pixel.V(x,y))
+						grid.Push(pixel.V(x+100,y+100))
+						grid.Rectangle(1)
+					}
+				}
+			}
 
 			// Sleep to ensure we are updating grapgics at a consistent rate
 			time.Sleep(start.Add(time.Second * 1/updatesPerSecond).Sub(time.Now()))
 
 			win.Clear(colornames.Black)
 			imd.Draw(win)
+			if drawGrid {
+				grid.Draw(win)
+			}
 			win.Update()
 		}
 
