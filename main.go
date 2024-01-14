@@ -51,16 +51,16 @@ func main() {
 				imd.Circle(1, 0)
 
 				if debugMode && particle.Id == 0 {
-					imd.Color = colornames.White
-					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-					imd.Circle(5, 1)
-
 					for _, neighbor := range sim.GetNearParticles(particle.Position) {
 						imd.Color = colornames.Limegreen
 						imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 						imd.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
 						imd.Line(1)
 					}
+
+					imd.Color = colornames.White
+					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
+					imd.Circle(5, 1)
 				}
 			}
 
