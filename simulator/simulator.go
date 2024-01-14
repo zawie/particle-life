@@ -94,6 +94,9 @@ func (sim *Simulator) UpdateSize(X float64, Y float64) {
         fmt.Println("Shrunk!")
     }
 
+    for _, particle := range sim.GetAllParticles() {
+        sim.wrapPosition(particle)
+    }
     sim.UpdateChunks()
 }
 
@@ -101,7 +104,6 @@ func (sim *Simulator) UpdateChunks() {
     for i, row := range sim.chunks {
         for j, chunk := range row {
             for ptr,_ := range chunk {
-                sim.wrapPosition(ptr)
                 x := int(ptr.Position.X/chunkSize)
                 y := int(ptr.Position.Y/chunkSize)
                 if x != i || y != j {
@@ -162,7 +164,7 @@ func (sim *Simulator) Step() {
                     // Modify position 
                     particle.Position.X += particle.Velocity.X
                     particle.Position.Y += particle.Velocity.Y
-                    // Note: position is wrapped in UpdateChunks() call
+                    sim.wrapPosition(particle)
                 }
             }(I, J)
         }
