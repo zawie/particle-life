@@ -20,7 +20,7 @@ func main() {
 	const Y = 1000
 
 	fmt.Println("Creating simulator...")
-	sim := simulator.NewSimulator(X, Y, 1000)
+	sim := simulator.NewSimulator(X, Y, 500)
 
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
@@ -48,7 +48,7 @@ func main() {
 			start := time.Now()
 			size := win.Bounds().Size()
 			sim.UpdateSize(size.X, size.Y)
-			for i := 0; i < speed; i++ { 
+			for i := 0; i < 1 << (speed-1); i++ { 
 				sim.Step()
 			}
 
@@ -80,7 +80,7 @@ func main() {
 
 			// Speed controls
 			if win.JustPressed(pixelgl.KeyL) {
-				if speed < 13 {
+				if speed < 10 {
 					speed++
 				}
 			}
