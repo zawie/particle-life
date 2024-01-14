@@ -11,9 +11,9 @@ import (
 
 const maxVelocity = 2
 const repulsionDistance = 7.0
-const influenceDistance = 200.0
+const influenceDistance = 100.0
 const universalForceMultiplier = 1.0
-const chunkSize = 100
+const chunkSize = influenceDistance
 
 type Vec2 struct {
     X, Y int
