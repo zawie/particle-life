@@ -10,8 +10,9 @@ import (
 )
 
 const maxVelocity = 2
-const repulsionDistance = 10.0
-const influenceDistance = 100.0
+const repulsionDistance = 7.0
+const influenceDistance = 200.0
+const universalForceMultiplier = 1.0
 const chunkSize = 100
 
 type Vec2 struct {
@@ -220,12 +221,13 @@ func (sim *Simulator) computeForce(source *Particle, influence *Particle) vec2.V
     direction := vec2.Scale(diff, 1/distance)
 
     if distance < repulsionDistance {
-        factor -= 0.25*(distance - repulsionDistance)
-    } else if distance < influenceDistance {
+        factor -= 10*(distance - repulsionDistance)
+    }
+    if distance < influenceDistance {
         factor += getInfluenceFactor(source.typeId, influence.typeId)/(distance - influenceDistance)
     }
 
-    return vec2.Scale(direction, factor)
+    return vec2.Scale(direction, factor * universalForceMultiplier)
 }
 
 func (sim *Simulator) wrapPosition(particle *Particle) {
