@@ -20,7 +20,7 @@ func main() {
 	const Y = 1000
 
 	fmt.Println("Creating simulator...")
-	sim := simulator.NewSimulator(X, Y, 500)
+	sim := simulator.NewSimulator(X, Y, 5000)
 
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
@@ -48,10 +48,12 @@ func main() {
 			start := time.Now()
 			size := win.Bounds().Size()
 			sim.UpdateSize(size.X, size.Y)
-			for i := 0; i < 1 << (speed-1); i++ { 
-				sim.Step()
-			}
-
+			if speed > 0 {
+				for i := 0; i < 1 << (speed-1); i++ { 
+					sim.Step()
+				}
+			}	
+			
 			imd := imdraw.New(nil)
 			particles := sim.GetAllParticles()
 			for _, particle := range particles {
