@@ -134,9 +134,13 @@ func (sim *Simulator) Step() {
             go func(particles map[*Particle]struct{}) {
                 defer wg1.Done()
 
+                var neighbors []*Particle
                 for particle, _ := range particles {
+                    if neighbors == nil {
+                        neighbors = sim.getNearParticles(particle.Position)
+                    }
                     var force vec2.Vector
-                    for _, neighbor := range sim.getNearParticles(particle.Position) {
+                    for _, neighbor := range neighbors {
                         if neighbor == particle {
                             continue
                         }
@@ -154,13 +158,10 @@ func (sim *Simulator) Step() {
                 wg0.Wait() 
 
                 for particle, _ := range particles {
-
                     // Modify position 
                     particle.Position.X += particle.Velocity.X
                     particle.Position.Y += particle.Velocity.Y
-
-                    // Wrap
-                    sim.wrapPosition(particle)
+                    // Note: position is wrapped in UpdateChunks() call
                 }
             }(chunk)
         }
