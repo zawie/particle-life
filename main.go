@@ -80,12 +80,17 @@ func main() {
 
 			// Speed controls
 			if win.JustPressed(pixelgl.KeyL) {
-				speed++
+				if speed < 13 {
+					speed++
+				}
 			}
 
 			if win.JustPressed(pixelgl.KeyJ) {
 				if speed > 0 {
 					speed--
+					if speed == 0 {
+						oldSpeed = 1
+					}
 				}
 			}
 
