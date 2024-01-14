@@ -23,6 +23,7 @@ type Particle struct {
     Id  int
 	Velocity vec2.Vector
     Color color.Color
+
     typeId int
 }
 
@@ -195,8 +196,8 @@ func (sim *Simulator) GetNearParticles(position vec2.Vector) (near []*Particle) 
     i := int(position.X/chunkSize)
     j := int(position.Y/chunkSize)
 
-    for l := range []int{-1,0,1} {
-        for k := range []int{-1,0,1} {
+    for _,l := range []int{-1,0,1} {
+        for _,k := range []int{-1,0,1} {
             a := i + l
             b := j + k
             if (a < 0 || b < 0 || a >= len(sim.chunks) || b >= len(sim.chunks[0])) {
