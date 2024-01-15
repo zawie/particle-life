@@ -8,6 +8,7 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"github.com/faiface/pixel/text"
 	"zawie/life/simulator"
+	"image/color"
 	"time"
 	"fmt"
 )
@@ -119,7 +120,7 @@ func main() {
 			
 			grid := imdraw.New(nil)
 			if debugMode {
-				grid.Color = colornames.Grey
+				grid.Color = color.RGBA{R: 15, G:15, B:15, A:0}
 				for x := 0.0; x <= size.X; x += float64(sim.ChunkSize) {
 					for y := 0.0; y <= size.Y; y += float64(sim.ChunkSize)  {
 						grid.Push(pixel.V(x,y))
