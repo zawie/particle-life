@@ -21,7 +21,8 @@ func main() {
 	const Y = 1000
 
 	fmt.Println("Creating simulator...")
-	sim := simulator.NewSimulator(X, Y, 5000)
+
+	particleCount :=  2500
 
 	targetId := 0
 
@@ -46,11 +47,18 @@ func main() {
 		}
 		atlas := text.NewAtlas(basicfont.Face7x13, text.ASCII)
 
+		sim := simulator.NewSimulator(X, Y, particleCount)
 		fmt.Println("Starting main loop...")
 		for !win.Closed() {
 			start := time.Now()
+
 			size := win.Bounds().Size()
-			sim.UpdateSize(size.X, size.Y)
+			if win.JustPressed(pixelgl.KeyR) {
+				sim = simulator.NewSimulator(size.X, size.Y, particleCount)
+			} else {
+				sim.UpdateSize(size.X, size.Y)
+			}
+
 			if speed > 0 {
 				for i := 0; i < 1 << (speed-1); i++ { 
 					sim.Step()
