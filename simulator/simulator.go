@@ -9,12 +9,6 @@ import (
     "fmt"
 )
 
-const maxVelocity = 2
-const repulsionDistance = 7.0
-const influenceDistance = 100.0
-const universalForceMultiplier = 1.0
-const chunkSize = influenceDistance
-
 type Vec2 struct {
     X, Y int
 }
@@ -23,15 +17,30 @@ type Particle struct {
     Position vec2.Vector
     Id  int
 	Velocity vec2.Vector
-    Color color.Color
-
+    Color color.Color //TODO: Don't store color in particle
+    Mass int
     typeId int
 }
 
+const MAX_TYPE_COUNT = 16
+type Chunk struct {
+    particleSet map[*Particle]struct{}
+    particleCount int
+    typeCounts [MAX_TYPE_COUNT]int //TODO: Make dynamic based on number of types
+}
+
 type Simulator struct {
+    MaxVelocity float64
+    InfluenceRadius float64
+    RepulsionRadius float64
+    ApproximationRadius float64
+    UniversalForceMultiplier float64
+    ChunkSize float64
+    MinimumAmountToChunk int
+
     tick uint64
     bounds vec2.Vector
-    chunks [][]map[*Particle]struct{}
+    chunks [][]Chunk
 }
 
 var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
@@ -40,7 +49,16 @@ var influenceMatrix [5][5]float64
 
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
-    var sim Simulator
+    var sim Simulator = Simulator{
+        MaxVelocity: 2,
+        RepulsionRadius: 7.0,
+        InfluenceRadius: 150.0,
+        ApproximationRadius: 50.0,
+        UniversalForceMultiplier: 1.0,
+        MinimumAmountToChunk: 2,
+    }
+    sim.ChunkSize = sim.InfluenceRadius/4
+
     (&sim).UpdateSize(X,Y)
 
     particlesAdded := 0 
@@ -53,6 +71,7 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         p.Position.Y = rand.Float64() * sim.bounds.Y
         p.Velocity.X = rand.Float64() - 0.5
         p.Velocity.Y = rand.Float64() - 0.5
+        p.Mass = 1
         sim.AddParticle(&p)
         particlesAdded++
     }
@@ -82,14 +101,16 @@ func (sim *Simulator) UpdateSize(X float64, Y float64) {
 
     if grew {
         fmt.Println("Grew!")
-        I := int((X + (chunkSize-1))/chunkSize)
-        J := int((Y + (chunkSize-1))/chunkSize)
+        I := int((X + (sim.ChunkSize-1))/sim.ChunkSize)
+        J := int((Y + (sim.ChunkSize-1))/sim.ChunkSize)
         for i := len(sim.chunks); i < I; i++ {
-            sim.chunks = append(sim.chunks, []map[*Particle]struct{}{})
+            sim.chunks = append(sim.chunks, []Chunk{})
         }
         for i := 0; i < len(sim.chunks); i++ {
             for j := len(sim.chunks[i]); j < J; j++ {
-                sim.chunks[i] = append(sim.chunks[i], make(map[*Particle]struct{}))
+                sim.chunks[i] = append(sim.chunks[i], Chunk{
+                    particleSet: make(map[*Particle]struct{}),
+                })
             }
         }  
     }
@@ -107,12 +128,17 @@ func (sim *Simulator) UpdateSize(X float64, Y float64) {
 func (sim *Simulator) UpdateChunks() {
     for i, row := range sim.chunks {
         for j, chunk := range row {
-            for ptr,_ := range chunk {
-                x := int(ptr.Position.X/chunkSize)
-                y := int(ptr.Position.Y/chunkSize)
+            for ptr,_ := range chunk.particleSet {
+                x := int(ptr.Position.X/sim.ChunkSize)
+                y := int(ptr.Position.Y/sim.ChunkSize)
                 if x != i || y != j {
-                    sim.chunks[x][y][ptr] = struct{}{}
-                    delete(chunk, ptr)
+                    sim.chunks[x][y].particleSet[ptr] = struct{}{}
+                    sim.chunks[x][y].typeCounts[ptr.typeId]++
+                    sim.chunks[x][y].particleCount++
+                    
+                    delete(sim.chunks[i][j].particleSet, ptr)
+                    sim.chunks[i][j].typeCounts[ptr.typeId]--
+                    sim.chunks[i][j].particleCount--
                 }
             }
         }
@@ -120,9 +146,11 @@ func (sim *Simulator) UpdateChunks() {
 }
 
 func (sim *Simulator) AddParticle(particle *Particle) {
-    x := int(particle.Position.X/chunkSize)
-    y := int(particle.Position.Y/chunkSize)
-    sim.chunks[x][y][particle] = struct{}{}
+    x := int(particle.Position.X/sim.ChunkSize)
+    y := int(particle.Position.Y/sim.ChunkSize)
+    sim.chunks[x][y].particleSet[particle] = struct{}{}
+    sim.chunks[x][y].typeCounts[particle.typeId]++
+    sim.chunks[x][y].particleCount++
 }
 
 func (sim *Simulator) Step() {
@@ -140,9 +168,9 @@ func (sim *Simulator) Step() {
             go func(i int, j int) {
                 defer wg1.Done()
 
-                particles := sim.chunks[i][j]
+                particles := sim.chunks[i][j].particleSet
 
-                neighbors := sim.GetNearParticles(vec2.Vector{X: float64(i*chunkSize + chunkSize/2), Y: float64(j*chunkSize + chunkSize/2)})
+                neighbors := sim.GetNeighborhood(sim.getChunkCenter(i,j))
 
                 for particle, _ := range particles {
                
@@ -156,8 +184,8 @@ func (sim *Simulator) Step() {
                     particle.Velocity.X += force.X
                     particle.Velocity.Y += force.Y
 
-                    if vec2.Magnitude(particle.Velocity) > maxVelocity {
-                        particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), maxVelocity)
+                    if vec2.Magnitude(particle.Velocity) > sim.MaxVelocity {
+                        particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), sim.MaxVelocity)
                     }      
                 }
 
@@ -183,7 +211,7 @@ func (sim *Simulator) Step() {
 func (sim *Simulator) GetAllParticles() (particles []*Particle) {
     for _, row := range sim.chunks {
         for _, chunk := range row {
-            for particle, _ := range chunk {
+            for particle, _ := range chunk.particleSet {
                 particles = append(particles, particle)
             }
         }
@@ -192,20 +220,49 @@ func (sim *Simulator) GetAllParticles() (particles []*Particle) {
     return
 }
 
-func (sim *Simulator) GetNearParticles(position vec2.Vector) (near []*Particle) {
+func (sim *Simulator) GetNeighborhood(position vec2.Vector) (near []*Particle) {
     
-    i := int(position.X/chunkSize)
-    j := int(position.Y/chunkSize)
+    i := int(position.X/sim.ChunkSize)
+    j := int(position.Y/sim.ChunkSize)
 
-    for _,l := range []int{-1,0,1} {
-        for _,k := range []int{-1,0,1} {
+    chunkRadiusCount := int((sim.InfluenceRadius + (sim.ChunkSize-1))/sim.ChunkSize)
+
+    for l := -chunkRadiusCount; l <= chunkRadiusCount; l++ {
+        for k := -chunkRadiusCount; k <= chunkRadiusCount; k++ {
             a := i + l
             b := j + k
+            // Skip out of bounds chunks 
+            // TODO: Implement wrap around
             if (a < 0 || b < 0 || a >= len(sim.chunks) || b >= len(sim.chunks[0])) {
                 continue
             }
-            for ptr,_ := range sim.chunks[a][b] {
-                near = append(near, ptr)
+            chunk := sim.chunks[a][b]
+            chunkPosition := sim.getChunkCenter(a,b)
+            distance := vec2.Magnitude(vec2.Subtract(position, chunkPosition))
+
+            if distance > sim.InfluenceRadius {
+                continue
+            }
+            
+            if distance > sim.ApproximationRadius && chunk.particleCount >= sim.MinimumAmountToChunk {
+                // Give particle representing average of the chunk
+                for t := 0; t < MAX_TYPE_COUNT; t++ {
+                    if chunk.typeCounts[t] == 0 {
+                        continue
+                    }
+                    // fmt.Println(chunk.typeCounts[t])
+                    approxParticle := Particle{
+                        Position: chunkPosition,
+                        Mass: chunk.typeCounts[t],
+                        typeId: t,
+                    }
+                    near = append(near, &approxParticle)
+                }
+            } else {
+                 // Give all the points
+                 for ptr,_ := range chunk.particleSet {
+                    near = append(near, ptr)
+                }
             }
         }
     }
@@ -220,14 +277,14 @@ func (sim *Simulator) computeForce(source *Particle, influence *Particle) vec2.V
     distance := vec2.Magnitude(diff)
     direction := vec2.Scale(diff, 1/distance)
 
-    if distance < repulsionDistance {
-        factor -= 10*(distance - repulsionDistance)
+    if distance < sim.RepulsionRadius {
+        factor -= 10*(distance - sim.RepulsionRadius)
     }
-    if distance < influenceDistance {
-        factor += getInfluenceFactor(source.typeId, influence.typeId)/(distance - influenceDistance)
+    if distance < sim.InfluenceRadius {
+        factor += getInfluenceFactor(source.typeId, influence.typeId)/(distance - sim.InfluenceRadius)
     }
 
-    return vec2.Scale(direction, factor * universalForceMultiplier)
+    return vec2.Scale(direction, factor * sim.UniversalForceMultiplier * float64(influence.Mass))
 }
 
 func (sim *Simulator) wrapPosition(particle *Particle) {
@@ -248,4 +305,8 @@ func (sim *Simulator) wrapPosition(particle *Particle) {
 
 func getInfluenceFactor(a int, b int) float64 {
     return influenceMatrix[a][b]
+}
+
+func (sim *Simulator) getChunkCenter(i int, j int) vec2.Vector {
+    return vec2.Vector{X: (float64(i) + 0.5)*sim.ChunkSize, Y: (float64(j) + 0.5)*sim.ChunkSize}
 }

@@ -22,6 +22,8 @@ func main() {
 	fmt.Println("Creating simulator...")
 	sim := simulator.NewSimulator(X, Y, 5000)
 
+	targetId := 0
+
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
 
@@ -61,28 +63,38 @@ func main() {
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				imd.Circle(1, 0)
 
-				if debugMode && particle.Id == 0 {
-					for _, neighbor := range sim.GetNearParticles(particle.Position) {
+				if debugMode && particle.Id == targetId {
+					for _, neighbor := range sim.GetNeighborhood(particle.Position) {
 						imd.Color = colornames.Limegreen
 						imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 						imd.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
 						imd.Line(1)
 					}
 
+					imd.Color = colornames.Red
+					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
+					imd.Circle(sim.RepulsionRadius, 1)
+
+					imd.Color = colornames.Blue
+					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
+					imd.Circle(sim.ApproximationRadius, 1)
+
 					imd.Color = colornames.White
 					imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-					imd.Circle(5, 1)
+					imd.Circle(sim.InfluenceRadius, 1)
 				}
 			}
 
 			// Text controls
 			if win.JustPressed(pixelgl.KeyG) {
 				debugMode = !debugMode
+				targetId++
+				targetId %= 100 //TODO: Make dynamic
 			}
 
 			// Speed controls
 			if win.JustPressed(pixelgl.KeyL) {
-				if speed < 10 {
+				if speed < 5 {
 					speed++
 				}
 			}
@@ -107,11 +119,11 @@ func main() {
 			
 			grid := imdraw.New(nil)
 			if debugMode {
-				grid.Color = colornames.Gray
-				for x := 0.0; x <= size.X; x += 100.0 {
-					for y := 0.0; y <= size.Y; y += 100.0 {
+				grid.Color = colornames.Grey
+				for x := 0.0; x <= size.X; x += float64(sim.ChunkSize) {
+					for y := 0.0; y <= size.Y; y += float64(sim.ChunkSize)  {
 						grid.Push(pixel.V(x,y))
-						grid.Push(pixel.V(x+100,y+100))
+						grid.Push(pixel.V(x+sim.ChunkSize,y+sim.ChunkSize))
 						grid.Rectangle(1)
 					}
 				}
