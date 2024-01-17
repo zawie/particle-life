@@ -22,7 +22,7 @@ func main() {
 
 	fmt.Println("Creating simulator...")
 
-	particleCount :=  2500
+	particleCount :=  1000
 
 	targetId := 0
 
@@ -103,7 +103,7 @@ func main() {
 
 			// Speed controls
 			if win.JustPressed(pixelgl.KeyL) {
-				if speed < 5 {
+				if speed < 10 {
 					speed++
 				}
 			}

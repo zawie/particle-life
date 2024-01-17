@@ -50,11 +50,11 @@ var influenceMatrix [5][5]float64
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator = Simulator{
-        MaxVelocity: 10,
+        MaxVelocity: 100,
         RepulsionRadius: 5,
-        InfluenceRadius: 50,
-        ApproximationRadius: 25,
-        UniversalForceMultiplier: 0.01,
+        InfluenceRadius: 100,
+        ApproximationRadius: 50,
+        UniversalForceMultiplier: 0.1,
         MinimumAmountToChunk: 10,
     }
     sim.ChunkSize = sim.ApproximationRadius
@@ -211,7 +211,7 @@ func (sim *Simulator) ComputeForceInChunk(i, j int) {
         }   
 
         // Add air resistance
-        speed = speed - (speed*speed)/(sim.MaxVelocity*sim.MaxVelocity)
+        speed = speed - 0.1*(speed*speed)
 
         // Cap speed
         if speed < 0 {
