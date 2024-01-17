@@ -50,19 +50,19 @@ var influenceMatrix [5][5]float64
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator = Simulator{
-        MaxVelocity: 2,
-        RepulsionRadius: 7.0,
-        InfluenceRadius: 150.0,
-        ApproximationRadius: 50.0,
-        UniversalForceMultiplier: 1.0,
-        MinimumAmountToChunk: 2,
+        MaxVelocity: 10,
+        RepulsionRadius: 4,
+        InfluenceRadius: 64,
+        ApproximationRadius: 32,
+        UniversalForceMultiplier: 0.01,
+        MinimumAmountToChunk: 10,
     }
-    sim.ChunkSize = sim.InfluenceRadius/4
+    sim.ChunkSize = sim.ApproximationRadius
 
     (&sim).UpdateSize(X,Y)
 
     particlesAdded := 0 
-    for particlesAdded< particleCount {
+    for particlesAdded < particleCount {
         var p Particle
         p.Id = particlesAdded
         p.typeId = rand.Int() % len(particleTypes)
@@ -184,9 +184,22 @@ func (sim *Simulator) Step() {
                     particle.Velocity.X += force.X
                     particle.Velocity.Y += force.Y
 
-                    if vec2.Magnitude(particle.Velocity) > sim.MaxVelocity {
-                        particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), sim.MaxVelocity)
-                    }      
+                    speed := vec2.Magnitude(particle.Velocity)
+
+                    // Cap speed 
+                    if speed > sim.MaxVelocity {
+                        speed = sim.MaxVelocity
+                    }   
+
+                    // Add air resistance
+                    speed = speed - (speed*speed)/(sim.MaxVelocity*sim.MaxVelocity)
+
+                    // Cap speed
+                    if speed < 0 {
+                        speed = 0 
+                    }
+
+                    particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), speed)
                 }
 
                 wg0.Done()
