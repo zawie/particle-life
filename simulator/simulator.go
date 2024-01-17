@@ -211,11 +211,11 @@ func (sim *Simulator) ComputeForceInChunk(i, j int) {
         }   
 
         // Add air resistance
-        speed = speed - 0.1*(speed*speed)
+        speed = speed - 0.05*(speed*speed)
 
         // Cap speed
         if speed < 0 {
-            speed = 0 
+            speed = 0.001
         }
 
         particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), speed)
