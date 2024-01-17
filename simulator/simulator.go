@@ -51,9 +51,9 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator = Simulator{
         MaxVelocity: 10,
-        RepulsionRadius: 4,
-        InfluenceRadius: 64,
-        ApproximationRadius: 32,
+        RepulsionRadius: 5,
+        InfluenceRadius: 50,
+        ApproximationRadius: 25,
         UniversalForceMultiplier: 0.01,
         MinimumAmountToChunk: 10,
     }
@@ -159,60 +159,25 @@ func (sim *Simulator) Step() {
     var wg0 sync.WaitGroup
     var wg1 sync.WaitGroup
 
-    threadCount := len(sim.chunks) * len(sim.chunks[0])
+    threadCount := len(sim.chunks)
     wg0.Add(threadCount)
     wg1.Add(threadCount)
 
     for I, row := range sim.chunks {
-        for J, _ := range row {
-            go func(i int, j int) {
-                defer wg1.Done()
+        go func(i int) {
+            defer wg1.Done()
 
-                particles := sim.chunks[i][j].particleSet
+            for j, _ := range row {
+                sim.ComputeForceInChunk(i,j)
+            }
 
-                neighbors := sim.GetNeighborhood(sim.getChunkCenter(i,j))
+            wg0.Done()
+            wg0.Wait() 
 
-                for particle, _ := range particles {
-               
-                    var force vec2.Vector
-                    for _, neighbor := range neighbors {
-                        if neighbor == particle {
-                            continue
-                        }
-                        force = vec2.Add(force, sim.computeForce(particle, neighbor))
-                    }
-                    particle.Velocity.X += force.X
-                    particle.Velocity.Y += force.Y
-
-                    speed := vec2.Magnitude(particle.Velocity)
-
-                    // Cap speed 
-                    if speed > sim.MaxVelocity {
-                        speed = sim.MaxVelocity
-                    }   
-
-                    // Add air resistance
-                    speed = speed - (speed*speed)/(sim.MaxVelocity*sim.MaxVelocity)
-
-                    // Cap speed
-                    if speed < 0 {
-                        speed = 0 
-                    }
-
-                    particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), speed)
-                }
-
-                wg0.Done()
-                wg0.Wait() 
-
-                for particle, _ := range particles {
-                    // Modify position 
-                    particle.Position.X += particle.Velocity.X
-                    particle.Position.Y += particle.Velocity.Y
-                    sim.wrapPosition(particle)
-                }
-            }(I, J)
-        }
+            for j, _ := range row {
+                sim.ComputePositionInChunk(i,j)
+            }
+        }(I)
     }
 
     wg1.Wait()
@@ -220,6 +185,52 @@ func (sim *Simulator) Step() {
 
     sim.tick++
 }
+
+func (sim *Simulator) ComputeForceInChunk(i, j int) {
+    particles := sim.chunks[i][j].particleSet
+
+    neighbors := sim.GetNeighborhood(sim.getChunkCenter(i,j))
+
+    for particle, _ := range particles {
+    
+        var force vec2.Vector
+        for _, neighbor := range neighbors {
+            if neighbor == particle {
+                continue
+            }
+            force = vec2.Add(force, sim.computeForce(particle, neighbor))
+        }
+        particle.Velocity.X += force.X
+        particle.Velocity.Y += force.Y
+
+        speed := vec2.Magnitude(particle.Velocity)
+
+        // Cap speed 
+        if speed > sim.MaxVelocity {
+            speed = sim.MaxVelocity
+        }   
+
+        // Add air resistance
+        speed = speed - (speed*speed)/(sim.MaxVelocity*sim.MaxVelocity)
+
+        // Cap speed
+        if speed < 0 {
+            speed = 0 
+        }
+
+        particle.Velocity = vec2.Scale(vec2.Unit(particle.Velocity), speed)
+    }
+}
+
+func (sim *Simulator) ComputePositionInChunk(i, j int) {
+    for particle, _ := range sim.chunks[i][j].particleSet {
+        // Modify position 
+        particle.Position.X += particle.Velocity.X
+        particle.Position.Y += particle.Velocity.Y
+        sim.wrapPosition(particle)
+    }
+}
+
 
 func (sim *Simulator) GetAllParticles() (particles []*Particle) {
     for _, row := range sim.chunks {
