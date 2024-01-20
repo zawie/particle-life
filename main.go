@@ -8,12 +8,19 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"github.com/faiface/pixel/text"
 	"zawie/life/simulator"
+	"zawie/life/simulator/vec2"
 	"image/color"
 	"time"
 	"fmt"
 )
 
 const framesPerSecond = 60
+
+const (
+	PLAIN_MODE int = iota
+	DEBUG_MODE
+	TEMP_MODE
+)
 
 func main() {
 
@@ -26,13 +33,14 @@ func main() {
 
 	targetId := 0
 
+	var temperatureHistory []float64
+
 	fmt.Println("Opening window...")
 	pixelgl.Run(func() {
-
+		mode := PLAIN_MODE
 
 		speed := 1
 		oldSpeed := speed
-		debugMode := false 
 
 		cfg := pixelgl.WindowConfig{
 			Title:  "Zawie's Particle Life",
@@ -55,6 +63,7 @@ func main() {
 			size := win.Bounds().Size()
 			if win.JustPressed(pixelgl.KeyR) {
 				sim = simulator.NewSimulator(size.X, size.Y, particleCount)
+				temperatureHistory = make([]float64, 0)
 			} else {
 				sim.UpdateSize(size.X, size.Y)
 			}
@@ -62,17 +71,22 @@ func main() {
 			if speed > 0 {
 				for i := 0; i < 1 << (speed-1); i++ { 
 					sim.Step()
+					temperatureHistory = append(temperatureHistory, sim.ComputeAverageKineticEnergy())
 				}
 			}	
 			
 			imd := imdraw.New(nil)
 			particles := sim.GetAllParticles()
 			for _, particle := range particles {
-				imd.Color = particle.Color
+				if mode == TEMP_MODE {
+					imd.Color = getRatioColor(vec2.Magnitude(particle.Velocity)/0.9)
+				} else {
+					imd.Color = particle.Color
+				}
 				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				imd.Circle(1, 0)
 
-				if debugMode && particle.Id == targetId {
+				if mode == DEBUG_MODE && particle.Id == targetId {
 					for _, neighbor := range sim.GetNeighborhood(particle.Position) {
 						imd.Color = colornames.Limegreen
 						imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
@@ -96,7 +110,21 @@ func main() {
 
 			// Text controls
 			if win.JustPressed(pixelgl.KeyG) {
-				debugMode = !debugMode
+				if mode == DEBUG_MODE {
+					mode = PLAIN_MODE
+				} else {
+					mode = DEBUG_MODE
+				}
+				targetId++
+				targetId %= 100 //TODO: Make dynamic
+			}
+
+			if win.JustPressed(pixelgl.KeyT) {
+				if mode == TEMP_MODE {
+					mode = PLAIN_MODE
+				} else {
+					mode = TEMP_MODE
+				}
 				targetId++
 				targetId %= 100 //TODO: Make dynamic
 			}
@@ -127,7 +155,7 @@ func main() {
 			}
 			
 			grid := imdraw.New(nil)
-			if debugMode {
+			if mode == DEBUG_MODE {
 				grid.Color = color.RGBA{R: 15, G:15, B:15, A:0}
 				for x := 0.0; x <= size.X; x += float64(sim.ChunkSize) {
 					for y := 0.0; y <= size.Y; y += float64(sim.ChunkSize)  {
@@ -143,7 +171,7 @@ func main() {
 
 			win.Clear(colornames.Black)
 			imd.Draw(win)
-			if debugMode {
+			if mode == DEBUG_MODE {
 				grid.Draw(win)
 			}
 
@@ -154,13 +182,59 @@ func main() {
 			} else {
 				topLeftTxt.WriteString(fmt.Sprintf("SPEED x%d", 1 << (speed-1)))
 			}
-
 			topLeftTxt.Draw(win, pixel.IM)
 
+			temperatureGraph := imdraw.New(nil)
+			// Display temperature graph
+			max := 0.01
+			for _, t := range temperatureHistory {
+				if t > max {
+					max = t
+				}
+			}
+
+			graphHeight := 100.0
+			count := 0
+			agg := 0.0
+			x := len(temperatureHistory) - int(size.X) - 100
+			if x < 0 {
+				x = 0
+			}
+			for ; x < len(temperatureHistory); x++{
+				t := temperatureHistory[x]
+
+				if count <= 100 {
+					count++
+					agg += t
+				} else {
+					agg += t - temperatureHistory[x-100]
+				}
+
+				y := (agg/float64(count))/max * graphHeight
+				temperatureGraph.Color = getRatioColor((agg/float64(count))/max )
+				temperatureGraph.Push(pixel.V(float64(x-(len(temperatureHistory)-int(size.X))), float64(y)))
+				temperatureGraph.Line(1)
+				temperatureGraph.Push(pixel.V(float64(x-(len(temperatureHistory)-int(size.X))), float64(y)))
+			}
+			if mode == TEMP_MODE {
+				temperatureGraph.Draw(win)
+			}
 			win.Update()
 		}
 
 		fmt.Println("Window closed. Terminating gracefully.")
 	})
 
+}
+
+func getRatioColor(ratio float64) color.RGBA {
+	// Ensure ratio is within the valid range
+	if ratio < 0 {
+		ratio = 0
+	} else if ratio > 1.0 {
+		ratio = 1.0
+	}
+	
+	// Return the color.RGBA
+	return color.RGBA{uint8(ratio * 255), uint8(ratio * 255),uint8(ratio * 255), 255}
 }

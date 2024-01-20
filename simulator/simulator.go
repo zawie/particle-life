@@ -30,7 +30,7 @@ type Chunk struct {
 }
 
 type Simulator struct {
-    MaxVelocity float64
+    MaxSpeed float64
     InfluenceRadius float64
     RepulsionRadius float64
     ApproximationRadius float64
@@ -38,7 +38,7 @@ type Simulator struct {
     ChunkSize float64
     MinimumAmountToChunk int
 
-    tick uint64
+    Tick uint64
     bounds vec2.Vector
     chunks [][]Chunk
 }
@@ -50,7 +50,7 @@ var influenceMatrix [5][5]float64
 func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     var sim Simulator = Simulator{
-        MaxVelocity: 100,
+        MaxSpeed: 100,
         RepulsionRadius: 5,
         InfluenceRadius: 100,
         ApproximationRadius: 50,
@@ -183,7 +183,7 @@ func (sim *Simulator) Step() {
     wg1.Wait()
     sim.UpdateChunks()
 
-    sim.tick++
+    sim.Tick++
 }
 
 func (sim *Simulator) ComputeForceInChunk(i, j int) {
@@ -206,8 +206,8 @@ func (sim *Simulator) ComputeForceInChunk(i, j int) {
         speed := vec2.Magnitude(particle.Velocity)
 
         // Cap speed 
-        if speed > sim.MaxVelocity {
-            speed = sim.MaxVelocity
+        if speed > sim.MaxSpeed {
+            speed = sim.MaxSpeed
         }   
 
         // Add air resistance
@@ -291,6 +291,17 @@ func (sim *Simulator) GetNeighborhood(position vec2.Vector) (near []*Particle) {
         }
     }
 
+    return
+}
+
+func (sim *Simulator) ComputeAverageKineticEnergy() (energy float64) {
+    particles := sim.GetAllParticles()
+    count := len(particles)
+    for _, particle := range particles {
+        speed := vec2.Magnitude(particle.Velocity)
+        energy += speed*speed
+    }
+    energy = energy/float64(count)
     return
 }
 
