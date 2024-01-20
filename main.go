@@ -179,7 +179,7 @@ func main() {
 			topLeftTxt.Color = colornames.White
 			if speed == 0 {
 				topLeftTxt.WriteString("PAUSED")
-			} else {
+			} else if speed > 1 {
 				topLeftTxt.WriteString(fmt.Sprintf("SPEED x%d", 1 << (speed-1)))
 			}
 			topLeftTxt.Draw(win, pixel.IM)
@@ -213,7 +213,7 @@ func main() {
 				y := (agg/float64(count))/max * graphHeight
 				temperatureGraph.Color = getRatioColor((agg/float64(count))/max )
 				temperatureGraph.Push(pixel.V(float64(x-(len(temperatureHistory)-int(size.X))), float64(y)))
-				temperatureGraph.Line(1)
+				temperatureGraph.Line(2)
 				temperatureGraph.Push(pixel.V(float64(x-(len(temperatureHistory)-int(size.X))), float64(y)))
 			}
 			if mode == TEMP_MODE {
