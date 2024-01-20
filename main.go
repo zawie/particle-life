@@ -196,18 +196,19 @@ func main() {
 			graphHeight := 100.0
 			count := 0
 			agg := 0.0
-			x := len(temperatureHistory) - int(size.X) - 100
+			batchSize := 50
+			x := len(temperatureHistory) - int(size.X) - batchSize
 			if x < 0 {
 				x = 0
 			}
 			for ; x < len(temperatureHistory); x++{
 				t := temperatureHistory[x]
 
-				if count <= 100 {
+				if count <= batchSize {
 					count++
 					agg += t
 				} else {
-					agg += t - temperatureHistory[x-100]
+					agg += t - temperatureHistory[x-batchSize]
 				}
 
 				y := (agg/float64(count))/max * graphHeight
