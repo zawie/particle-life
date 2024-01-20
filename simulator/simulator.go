@@ -69,8 +69,6 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         p.Color = particleTypes[p.typeId]
         p.Position.X = rand.Float64() * sim.bounds.X
         p.Position.Y = rand.Float64() * sim.bounds.Y
-        p.Velocity.X = rand.Float64() - 0.5
-        p.Velocity.Y = rand.Float64() - 0.5
         p.Mass = 1
         sim.AddParticle(&p)
         particlesAdded++
