@@ -55,7 +55,7 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
         InfluenceRadius: 100,
         ApproximationRadius: 50,
         UniversalForceMultiplier: 0.1,
-        MinimumAmountToChunk: 10,
+        MinimumAmountToChunk: 2,
     }
     sim.ChunkSize = sim.ApproximationRadius
 

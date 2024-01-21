@@ -26,9 +26,6 @@ func (m *modelImpl) Reset() {
 	m.simulator = simulator.NewSimulator(size.X, size.Y, m.particleCount)
 }
 func (m modelImpl) GetAllParticles() []*simulator.Particle { 
-	if m.simulator == nil {
-		panic("No simulator!!")
-	}
 	return m.simulator.GetAllParticles() 
 }
 func (m modelImpl) GetNeighborhood(pos vec2.Vector) []*simulator.Particle { return m.simulator.GetNeighborhood(pos) }
@@ -36,9 +33,8 @@ func (m modelImpl) ChunkSize() float64 { return m.simulator.ChunkSize }
 
 
 func main() {
-
 	model := &modelImpl{
-		particleCount: 1000,
+		particleCount: 2500,
 	}
 	model.gui = gui.NewGui(model)
 	model.Reset()

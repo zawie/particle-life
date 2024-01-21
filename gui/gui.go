@@ -169,39 +169,33 @@ func (gui *Gui) renderGrid() {
 }
 
 func (gui *Gui) renderParticles() {
-	imd := imdraw.New(nil)
+	dots := imdraw.New(nil)
+	lines := imdraw.New(nil)
 	particles := gui.model.GetAllParticles()
 	for _, particle := range particles {
 		if gui.mode == TEMP_MODE {
-			imd.Color = getRatioColor(vec2.Magnitude(particle.Velocity)/0.9)
+			dots.Color = getRatioColor(vec2.Magnitude(particle.Velocity)/0.9)
 		} else {
-			imd.Color = particle.Color
+			dots.Color = particle.Color
 		}
-		imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-		imd.Circle(1, 0)
+		dots.Push(pixel.V(particle.Position.X, particle.Position.Y))
+		dots.Circle(1, 0)
 
-		if gui.mode == DEBUG_MODE && particle.Id == 0 {
+		if gui.mode == DEBUG_MODE {
 			for _, neighbor := range gui.model.GetNeighborhood(particle.Position) {
-				imd.Color = colornames.Limegreen
-				imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-				imd.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
-				imd.Line(1)
+				lines.Push(pixel.V(particle.Position.X, particle.Position.Y))
+				lines.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
+				if neighbor.Mass > 1 {
+					lines.Color = colornames.Limegreen
+				} else {
+					lines.Color = colornames.Gray
+				}
+				lines.Line(1)
 			}
-
-			// imd.Color = colornames.Red
-			// imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-			// imd.Circle(sim.RepulsionRadius, 1)
-
-			// imd.Color = colornames.Blue
-			// imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-			// imd.Circle(sim.ApproximationRadius, 1)
-
-			// imd.Color = colornames.White
-			// imd.Push(pixel.V(particle.Position.X, particle.Position.Y))
-			// imd.Circle(sim.InfluenceRadius, 1)
 		}
 	}
-	imd.Draw(gui.window)
+	lines.Draw(gui.window)
+	dots.Draw(gui.window)
 }
 
 func (gui *Gui) renderText() {
