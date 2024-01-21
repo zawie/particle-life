@@ -27,6 +27,7 @@ const (
 	PLAIN_MODE Mode = iota
 	DEBUG_MODE
 	TEMP_MODE
+	ORG_MODE
 )
 const DEFAULT_MODE = PLAIN_MODE
 
@@ -116,6 +117,10 @@ func (gui *Gui) processInput() {
 		if gui.window.JustPressed(pixelgl.KeyT) {
 			gui.toggleMode(TEMP_MODE)
 		}
+		if gui.window.JustPressed(pixelgl.KeyO) {
+			gui.toggleMode(ORG_MODE)
+		}
+
 
 		// Model reset
 		if gui.window.JustPressed(pixelgl.KeyR) {
@@ -175,11 +180,13 @@ func (gui *Gui) renderParticles() {
 	for _, particle := range particles {
 		if gui.mode == TEMP_MODE {
 			dots.Color = getRatioColor(vec2.Magnitude(particle.Velocity)/0.9)
+		} else if gui.mode == ORG_MODE {
+			dots.Color = simulator.GenerateColorShade(particle.OrganismId, int(255/simulator.MAX_POPULATION_SIZE))
 		} else {
-			dots.Color = particle.Color
+			dots.Color = simulator.GenerateColorShade(particle.TypeId % simulator.PARTICLE_TYPE_COUNT, int(255/simulator.PARTICLE_TYPE_COUNT))
 		}
 		dots.Push(pixel.V(particle.Position.X, particle.Position.Y))
-		dots.Circle(1, 0)
+		dots.Circle(2, 0)
 
 		if gui.mode == DEBUG_MODE {
 			for _, neighbor := range gui.model.GetNeighborhood(particle.Position) {

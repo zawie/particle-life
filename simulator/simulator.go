@@ -2,31 +2,16 @@ package simulator
 
 import (
     "zawie/life/simulator/vec2"
-    "golang.org/x/image/colornames"
-    "image/color"
-    "math/rand"
     "sync"
     "fmt"
 )
 
-type Vec2 struct {
-    X, Y int
-}
+const MAX_TYPE_ID = PARTICLE_TYPE_COUNT * (MAX_POPULATION_SIZE + 2)
 
-type Particle struct {
-    Position vec2.Vector
-    Id  int
-	Velocity vec2.Vector
-    Color color.Color //TODO: Don't store color in particle
-    Mass int
-    typeId int
-}
-
-const MAX_TYPE_COUNT = 16
 type Chunk struct {
     particleSet map[*Particle]struct{}
     particleCount int
-    typeCounts [MAX_TYPE_COUNT]int //TODO: Make dynamic based on number of types
+    typeCounts [MAX_TYPE_ID]int
 }
 
 type Simulator struct {
@@ -37,17 +22,15 @@ type Simulator struct {
     UniversalForceMultiplier float64
     ChunkSize float64
     MinimumAmountToChunk int
-
     Tick uint64
+
+    influenceMatrix [MAX_TYPE_ID][MAX_TYPE_ID]float64
     bounds vec2.Vector
     chunks [][]Chunk
+    organismCount int
 }
 
-var particleTypes = []color.Color{colornames.Hotpink, colornames.Limegreen, colornames.Yellow, colornames.Blue, colornames.Red}
-
-var influenceMatrix [5][5]float64
-
-func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
+func NewSimulator(X float64, Y float64) *Simulator {
 
     var sim Simulator = Simulator{
         MaxSpeed: 100,
@@ -61,32 +44,48 @@ func NewSimulator(X float64, Y float64, particleCount int) *Simulator {
 
     (&sim).UpdateSize(X,Y)
 
-    particlesAdded := 0 
-    for particlesAdded < particleCount {
-        var p Particle
-        p.Id = particlesAdded
-        p.typeId = rand.Int() % len(particleTypes)
-        p.Color = particleTypes[p.typeId]
-        p.Position.X = rand.Float64() * sim.bounds.X
-        p.Position.Y = rand.Float64() * sim.bounds.Y
-        p.Mass = 1
-        sim.AddParticle(&p)
-        particlesAdded++
-    }
-
-    for i, _ := range particleTypes {
-        for j, _ := range particleTypes {
-            if i == j {
-                influenceMatrix[i][j] = .1
-            } else {
-                v := (2.0*rand.Float64() - 1.0)
-                influenceMatrix[i][j] = v*v*v
-            }
-        }
-    }
-
     return &sim
 }
+
+func (sim *Simulator) AddOrganisms(organisms []*Organism) {
+
+    for i, organism := range organisms {
+        x := ((i % 5) + 1) * 400
+        y := ((i / 5) + 1) * 400
+        sim.AddOrganism(organism, vec2.Vector{X:float64(x) , Y: float64(y)})
+    }
+}
+
+func (sim *Simulator) AddOrganism(organism *Organism, position vec2.Vector) {
+    sim.organismCount++
+    id := sim.organismCount
+
+    organism.Position(position)
+    for _, particle := range organism.GetAllParticles() {
+        particle.OrganismId = id
+        particle.TypeId +=  id*PARTICLE_TYPE_COUNT + particle.TypeId
+        sim.AddParticle(particle)
+    }
+
+
+    for i := 0; i < PARTICLE_TYPE_COUNT; i++ {
+        I := id*PARTICLE_TYPE_COUNT + i
+		for J := 0; J < MAX_TYPE_ID; J++ {
+            j := J % PARTICLE_TYPE_COUNT
+            sim.influenceMatrix[I][J] = organism.GetExternalInfluenceFactor(i, j)
+		}
+	}
+
+	for i := 0; i < PARTICLE_TYPE_COUNT; i++ {
+        I := id*PARTICLE_TYPE_COUNT + i
+		for j := 0; j < PARTICLE_TYPE_COUNT; j++ {
+            J := id*PARTICLE_TYPE_COUNT + j
+            sim.influenceMatrix[I][J] = organism.GetInternalInfluenceFactor(i, j)
+		}
+	}
+
+}
+
 
 func (sim *Simulator) UpdateSize(X float64, Y float64) {
     grew := X > sim.bounds.X || Y > sim.bounds.Y 
@@ -131,11 +130,11 @@ func (sim *Simulator) UpdateChunks() {
                 y := int(ptr.Position.Y/sim.ChunkSize)
                 if x != i || y != j {
                     sim.chunks[x][y].particleSet[ptr] = struct{}{}
-                    sim.chunks[x][y].typeCounts[ptr.typeId]++
+                    sim.chunks[x][y].typeCounts[ptr.TypeId]++
                     sim.chunks[x][y].particleCount++
                     
                     delete(sim.chunks[i][j].particleSet, ptr)
-                    sim.chunks[i][j].typeCounts[ptr.typeId]--
+                    sim.chunks[i][j].typeCounts[ptr.TypeId]--
                     sim.chunks[i][j].particleCount--
                 }
             }
@@ -144,16 +143,15 @@ func (sim *Simulator) UpdateChunks() {
 }
 
 func (sim *Simulator) AddParticle(particle *Particle) {
+    sim.wrapPosition(particle)
     x := int(particle.Position.X/sim.ChunkSize)
     y := int(particle.Position.Y/sim.ChunkSize)
     sim.chunks[x][y].particleSet[particle] = struct{}{}
-    sim.chunks[x][y].typeCounts[particle.typeId]++
+    sim.chunks[x][y].typeCounts[particle.TypeId]++
     sim.chunks[x][y].particleCount++
 }
 
 func (sim *Simulator) Step() {
-
-    // Compute velocity
     var wg0 sync.WaitGroup
     var wg1 sync.WaitGroup
 
@@ -268,7 +266,7 @@ func (sim *Simulator) GetNeighborhood(position vec2.Vector) (near []*Particle) {
             
             if distance > sim.ApproximationRadius && chunk.particleCount >= sim.MinimumAmountToChunk {
                 // Give particle representing average of the chunk
-                for t := 0; t < MAX_TYPE_COUNT; t++ {
+                for t := 0; t < PARTICLE_TYPE_COUNT; t++ {
                     if chunk.typeCounts[t] == 0 {
                         continue
                     }
@@ -276,7 +274,7 @@ func (sim *Simulator) GetNeighborhood(position vec2.Vector) (near []*Particle) {
                     approxParticle := Particle{
                         Position: chunkPosition,
                         Mass: chunk.typeCounts[t],
-                        typeId: t,
+                        TypeId: t,
                     }
                     near = append(near, &approxParticle)
                 }
@@ -314,7 +312,7 @@ func (sim *Simulator) computeForce(source *Particle, influence *Particle) vec2.V
         factor -= 10*(distance - sim.RepulsionRadius)
     }
     if distance < sim.InfluenceRadius {
-        factor += getInfluenceFactor(source.typeId, influence.typeId)/(distance - sim.InfluenceRadius)
+        factor += sim.getInfluenceFactor(source.TypeId, influence.TypeId)/(distance - sim.InfluenceRadius)
     }
 
     return vec2.Scale(direction, factor * sim.UniversalForceMultiplier * float64(influence.Mass))
@@ -336,8 +334,8 @@ func (sim *Simulator) wrapPosition(particle *Particle) {
     }
 }
 
-func getInfluenceFactor(a int, b int) float64 {
-    return influenceMatrix[a][b]
+func (sim *Simulator) getInfluenceFactor(a int, b int) float64 {
+    return sim.influenceMatrix[a][b]
 }
 
 func (sim *Simulator) getChunkCenter(i int, j int) vec2.Vector {
