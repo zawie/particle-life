@@ -186,7 +186,7 @@ func (gui *Gui) renderParticles() {
 				lines.Push(pixel.V(particle.Position.X, particle.Position.Y))
 				lines.Push(pixel.V(neighbor.Position.X, neighbor.Position.Y))
 				if neighbor.Mass > 1 {
-					lines.Color = colornames.Limegreen
+					lines.Color = colornames.White
 				} else {
 					lines.Color = colornames.Gray
 				}

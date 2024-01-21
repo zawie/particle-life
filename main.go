@@ -34,7 +34,7 @@ func (m modelImpl) ChunkSize() float64 { return m.simulator.ChunkSize }
 
 func main() {
 	model := &modelImpl{
-		particleCount: 2500,
+		particleCount: 1000,
 	}
 	model.gui = gui.NewGui(model)
 	model.Reset()
