@@ -1,6 +1,6 @@
 # Particle Life
 
-Particle life is a particle simulator implementing non-standard physics.
+Particle life is a particle simulator implemented in Golang showcasing emergent behavior.
 
 Each particle color is randomly assigned different repelling or attracting forces to other particles. Conservation of energy is not required and forces do not need to be equal (Newton is rolling in his grave!)
 
