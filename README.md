@@ -2,7 +2,7 @@
 
 Particle life is a particle simulator implemented in Golang showcasing emergent behavior.
 
-Each particle color is randomly assigned different repelling or attracting forces to other particles. Conservation of energy is not required and forces do not need to be equal (Newton is rolling in his grave!)
+Each particle color is randomly assigned different repelling or attracting forces to other particles. Conservation of energy is not required and pairs of forces do not need to be opposite and equal. (Newton is rolling in his grave!)
 
 This simple system displays emergent behavior as life like structures form under these simple constraints.
 
