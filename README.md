@@ -11,7 +11,7 @@ https://github.com/zawie/particle-life/assets/15623191/30f744da-1bce-4f2e-9fd9-c
 
 ## Optimizations
 
-In theory, this requires `O(n^2)` computations per frame to compute the forces  where `n` is the number of particles. However, we can reduce this by chunking the space into a grid. That way, for any given partlce we only need to scan grids that the particle is in or near. Additionally, for far enough chunks we memoize the "mass" of each color in the grid so we can further reduce the computation required per frame. This effectively reduces the time complexity to `O(n)`, assuming constant density. 
+In theory, this requires `O(n^2)` computations per frame to compute the forces  where `n` is the number of particles. However, we can reduce this by chunking the space into a grid. That way, for any given partlce we only need to scan grids that the particle is in or near. Additionally, for far enough chunks we memoize the "mass" of each color in the grid so we can further reduce the computation required per frame. This effectively reduces the time complexity to `O(n)`, assuming roughly uniform density. 
 
 These optimizations enable the system to run thousands of particles operating at 60 frames per second
 
